@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js Race Track — Scroll to Drive</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      background: #0a0a12;
+      color: #f5f5f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* Tall scroll container — drives the animation progress */
+    #scrollContainer {
+      position: relative;
+      height: 600vh;
+      width: 100%;
+    }
+
+    /* Sticky canvas holder */
+    #stickyStage {
+      position: sticky;
+      top: 0;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #scene {
+      position: absolute;
+      inset: 0;
+      display: block;
+    }
+
+    .overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      padding: 24px 32px;
+      pointer-events: none;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .title {
+      font-size: 14px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: #f5f5f5;
+      opacity: 0.85;
+    }
+
+    .hint {
+      font-size: 12px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #ffc857;
+      opacity: 0.9;
+    }
+
+    .hud {
+      position: absolute;
+      bottom: 24px;
+      left: 0;
+      width: 100%;
+      padding: 0 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .progress-wrap {
+      flex: 1;
+      margin: 0 24px;
+      height: 2px;
+      background: rgba(255,255,255,0.15);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      position: absolute;
+      top: 0; left: 0; bottom: 0;
+      width: 0%;
+      background: linear-gradient(90deg, #ffc857, #ff5c5c);
+      transition: width 0.08s linear;
+    }
+
+    .readout {
+      font-size: 12px;
+      letter-spacing: 0.2em;
+      color: rgba(255,255,255,0.75);
+      min-width: 60px;
+    }
+
+    .readout.right { text-align: right; }
+
+    .scroll-indicator {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 3;
+      font-size: 11px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.6);
+      animation: pulse 2s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; transform: translateX(-50%) translateY(0); }
+      50% { opacity: 0.9; transform: translateX(-50%) translateY(4px); }
+    }
+
+    .scroll-indicator.hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div id="scrollContainer">
+    <div id="stickyStage">
+      <canvas id="scene"></canvas>
+
+      <div class="overlay">
+        <div class="title">Race Track · Scroll Drive</div>
+        <div class="hint">Scroll ↓ to accelerate</div>
+      </div>
+
+      <div class="hud">
+        <div class="readout">LAP 01</div>
+        <div class="progress-wrap">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="readout right" id="progressText">0%</div>
+      </div>
+
+      <div class="scroll-indicator" id="scrollIndicator">Scroll to drive</div>
+    </div>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    const canvas = document.getElementById('scene');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const scrollIndicator = document.getElementById('scrollIndicator');
+    const scrollContainer = document.getElementById('scrollContainer');
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0a12);
+    scene.fog = new THREE.Fog(0x0a0a12, 60, 260);
+
+    const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 1000);
+
+    // Lights
+    const hemi = new THREE.HemisphereLight(0x88aaff, 0x1a1a2e, 0.55);
+    scene.add(hemi);
+
+    const sun = new THREE.DirectionalLight(0xffe4b0, 1.2);
+    sun.position.set(-40, 80, 30);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.left = -120;
+    sun.shadow.camera.right = 120;
+    sun.shadow.camera.top = 120;
+    sun.shadow.camera.bottom = -120;
+    sun.shadow.camera.near = 1;
+    sun.shadow.camera.far = 300;
+    sun.shadow.bias = -0.0005;
+    scene.add(sun);
+
+    // Track — a winding closed curve
+    const trackPoints = [
+      new THREE.Vector3(-70,  0,  -60),
+      new THREE.Vector3(-30,  0,  -90),
+      new THREE.Vector3( 20,  0,  -80),
+      new THREE.Vector3( 60,  0,  -40),
+      new THREE.Vector3( 80,  0,   10),
+      new THREE.Vector3( 55,  0,   55),
+      new THREE.Vector3( 10,  0,   70),
+      new THREE.Vector3(-35,  0,   60),
+      new THREE.Vector3(-75,  0,   25),
+      new THREE.Vector3(-85,  0,  -20),
+    ];
+    const trackCurve = new THREE.CatmullRomCurve3(trackPoints, true, 'centripetal', 0.5);
+
+    // Build track road geometry (flat ribbon along curve)
+    function buildRoad(curve, width, segments) {
+      const positions = [];
+      const uvs = [];
+      const indices = [];
+
+      const frames = curve.computeFrenetFrames(segments, true);
+      const halfW = width / 2;
+
+      for (let i = 0; i <= segments; i++) {
+        const t = i / segments;
+        const point = curve.getPointAt(t);
+        const normal = frames.normals[i];
+        const binormal = frames.binormals[i];
+        // road lies on xz plane — use binormal for lateral offset, stays flat
+        const lateral = new THREE.Vector3(binormal.x, 0, binormal.z).normalize();
+
+        const left  = point.clone().addScaledVector(lateral,  halfW);
+        const right = point.clone().addScaledVector(lateral, -halfW);
+
+        positions.push(left.x, 0.02, left.z);
+        positions.push(right.x, 0.02, right.z);
+
+        uvs.push(0, t * segments * 0.5);
+        uvs.push(1, t * segments * 0.5);
+      }
+
+      for (let i = 0; i < segments; i++) {
+        const a = i * 2;
+        const b = i * 2 + 1;
+        const c = (i + 1) * 2;
+        const d = (i + 1) * 2 + 1;
+        indices.push(a, c, b);
+        indices.push(b, c, d);
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      geo.setIndex(indices);
+      geo.computeVertexNormals();
+      return geo;
+    }
+
+    // Procedural road texture — dashed center line
+    function makeRoadTexture() {
+      const c = document.createElement('canvas');
+      c.width = 128; c.height = 512;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#1d1d22';
+      ctx.fillRect(0, 0, c.width, c.height);
+
+      // edge lines
+      ctx.fillStyle = '#f3f3f3';
+      ctx.fillRect(4, 0, 4, c.height);
+      ctx.fillRect(c.width - 8, 0, 4, c.height);
+
+      // dashed center line
+      ctx.fillStyle = '#ffc857';
+      const dashLen = 64, gap = 48;
+      for (let y = 0; y < c.height; y += dashLen + gap) {
+        ctx.fillRect(c.width / 2 - 2, y, 4, dashLen);
+      }
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.anisotropy = 8;
+      return tex;
+    }
+
+    const roadTex = makeRoadTexture();
+    const roadGeo = buildRoad(trackCurve, 10, 600);
+    const roadMat = new THREE.MeshStandardMaterial({
+      map: roadTex,
+      roughness: 0.85,
+      metalness: 0.05,
+    });
+    const road = new THREE.Mesh(roadGeo, roadMat);
+    road.receiveShadow = true;
+    scene.add(road);
+
+    // Ground
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x1a3d2a, roughness: 1 });
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // Curb markers along track edges
+    const curbGeo = new THREE.BoxGeometry(0.8, 0.3, 1.6);
+    const curbRed = new THREE.MeshStandardMaterial({ color: 0xff3b3b, roughness: 0.6 });
+    const curbWhite = new THREE.MeshStandardMaterial({ color: 0xf3f3f3, roughness: 0.6 });
+    const curbCount = 180;
+    for (let i = 0; i < curbCount; i++) {
+      const t = i / curbCount;
+      const p = trackCurve.getPointAt(t);
+      const tan = trackCurve.getTangentAt(t);
+      const side = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
+
+      const mat = (i % 2 === 0) ? curbRed : curbWhite;
+
+      const left = new THREE.Mesh(curbGeo, mat);
+      left.position.copy(p).addScaledVector(side,  5.6);
+      left.lookAt(p.x + tan.x, 0, p.z + tan.z);
+      left.castShadow = true;
+      scene.add(left);
+
+      const right = new THREE.Mesh(curbGeo, mat);
+      right.position.copy(p).addScaledVector(side, -5.6);
+      right.lookAt(p.x + tan.x, 0, p.z + tan.z);
+      right.castShadow = true;
+      scene.add(right);
+    }
+
+    // Start/finish line
+    {
+      const t = 0;
+      const p = trackCurve.getPointAt(t);
+      const tan = trackCurve.getTangentAt(t);
+      const checker = document.createElement('canvas');
+      checker.width = 64; checker.height = 16;
+      const cx = checker.getContext('2d');
+      for (let x = 0; x < 8; x++) for (let y = 0; y < 2; y++) {
+        cx.fillStyle = ((x + y) % 2) ? '#fff' : '#000';
+        cx.fillRect(x * 8, y * 8, 8, 8);
+      }
+      const checkTex = new THREE.CanvasTexture(checker);
+      const line = new THREE.Mesh(
+        new THREE.PlaneGeometry(10, 2),
+        new THREE.MeshStandardMaterial({ map: checkTex, roughness: 0.8 })
+      );
+      line.rotation.x = -Math.PI / 2;
+      line.position.set(p.x, 0.05, p.z);
+      line.lookAt(p.x + tan.x, 0.05, p.z + tan.z);
+      line.rotateX(-Math.PI / 2);
+      scene.add(line);
+    }
+
+    // Decorative trees along the sides
+    function makeTree() {
+      const g = new THREE.Group();
+      const trunk = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.3, 0.4, 2, 6),
+        new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 1 })
+      );
+      trunk.position.y = 1;
+      trunk.castShadow = true;
+      g.add(trunk);
+
+      const leaves = new THREE.Mesh(
+        new THREE.ConeGeometry(1.6, 4, 8),
+        new THREE.MeshStandardMaterial({ color: 0x2a6b3a, roughness: 1 })
+      );
+      leaves.position.y = 3.6;
+      leaves.castShadow = true;
+      g.add(leaves);
+      return g;
+    }
+    const treeCount = 60;
+    for (let i = 0; i < treeCount; i++) {
+      const t = i / treeCount;
+      const p = trackCurve.getPointAt(t);
+      const tan = trackCurve.getTangentAt(t);
+      const side = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
+      const offset = 14 + Math.random() * 20;
+      const flip = Math.random() > 0.5 ? 1 : -1;
+      const tree = makeTree();
+      tree.position.copy(p).addScaledVector(side, flip * offset);
+      tree.position.x += (Math.random() - 0.5) * 6;
+      tree.position.z += (Math.random() - 0.5) * 6;
+      const s = 0.8 + Math.random() * 0.8;
+      tree.scale.setScalar(s);
+      scene.add(tree);
+    }
+
+    // Car — simple stylized race car
+    function buildCar() {
+      const car = new THREE.Group();
+
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0xff2a2a, roughness: 0.35, metalness: 0.55 });
+      const accentMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4, metalness: 0.3 });
+      const glassMat = new THREE.MeshStandardMaterial({ color: 0x88ccee, roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.55 });
+      const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.8 });
+      const rimMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.25, metalness: 0.9 });
+      const lightMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffeeaa, emissiveIntensity: 1.2 });
+      const brakeMat = new THREE.MeshStandardMaterial({ color: 0xff2020, emissive: 0xff2020, emissiveIntensity: 0.9 });
+
+      // lower chassis
+      const chassis = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.5, 4.2), bodyMat);
+      chassis.position.y = 0.55;
+      chassis.castShadow = true;
+      car.add(chassis);
+
+      // cabin
+      const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.55, 1.8), bodyMat);
+      cabin.position.set(0, 1.05, -0.15);
+      cabin.castShadow = true;
+      car.add(cabin);
+
+      // windshield / glass
+      const glass = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.45, 1.6), glassMat);
+      glass.position.set(0, 1.1, -0.15);
+      car.add(glass);
+
+      // rear spoiler
+      const spoilerStand1 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.4, 0.12), accentMat);
+      spoilerStand1.position.set(-0.7, 1.05, 1.9);
+      car.add(spoilerStand1);
+      const spoilerStand2 = spoilerStand1.clone();
+      spoilerStand2.position.x = 0.7;
+      car.add(spoilerStand2);
+      const spoiler = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.08, 0.5), accentMat);
+      spoiler.position.set(0, 1.3, 1.95);
+      spoiler.castShadow = true;
+      car.add(spoiler);
+
+      // headlights (front is -Z — car faces forward along tangent)
+      const hl = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.2, 0.08), lightMat);
+      hl.position.set(-0.65, 0.7, -2.1);
+      car.add(hl);
+      const hl2 = hl.clone();
+      hl2.position.x = 0.65;
+      car.add(hl2);
+
+      // brake lights (rear +Z)
+      const bl = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.15, 0.08), brakeMat);
+      bl.position.set(-0.6, 0.7, 2.1);
+      car.add(bl);
+      const bl2 = bl.clone();
+      bl2.position.x = 0.6;
+      car.add(bl2);
+
+      // racing stripe
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.02, 4.22), accentMat);
+      stripe.position.set(0, 0.81, 0);
+      car.add(stripe);
+
+      // wheels
+      const wheelGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.35, 20);
+      const rimGeo = new THREE.CylinderGeometry(0.26, 0.26, 0.36, 8);
+
+      const wheelPositions = [
+        [-1.05, 0.5, -1.3],
+        [ 1.05, 0.5, -1.3],
+        [-1.05, 0.5,  1.4],
+        [ 1.05, 0.5,  1.4],
+      ];
+      const wheels = [];
+      wheelPositions.forEach(([x, y, z]) => {
+        const w = new THREE.Mesh(wheelGeo, wheelMat);
+        w.rotation.z = Math.PI / 2;
+        w.position.set(x, y, z);
+        w.castShadow = true;
+        car.add(w);
+
+        const rim = new THREE.Mesh(rimGeo, rimMat);
+        rim.rotation.z = Math.PI / 2;
+        rim.position.set(x, y, z);
+        car.add(rim);
+
+        wheels.push(w, rim);
+      });
+
+      car.userData.wheels = wheels;
+      return car;
+    }
+
+    const car = buildCar();
+    scene.add(car);
+
+    // Camera target helper
+    const camPos = new THREE.Vector3();
+    const camLookAt = new THREE.Vector3();
+    const up = new THREE.Vector3(0, 1, 0);
+
+    // Scroll progress
+    let progress = 0;    // 0..1 along track
+    let targetProgress = 0;
+
+    function updateProgressFromScroll() {
+      const scrollable = scrollContainer.scrollHeight - window.innerHeight;
+      const p = scrollable > 0 ? window.scrollY / scrollable : 0;
+      targetProgress = Math.max(0, Math.min(1, p));
+      if (targetProgress > 0.01) scrollIndicator.classList.add('hidden');
+      else scrollIndicator.classList.remove('hidden');
+    }
+
+    window.addEventListener('scroll', updateProgressFromScroll, { passive: true });
+    updateProgressFromScroll();
+
+    // Resize
+    function resize() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Animation
+    const clock = new THREE.Clock();
+
+    function animate() {
+      const dt = Math.min(clock.getDelta(), 0.05);
+
+      // ease toward target progress for smooth feel
+      progress += (targetProgress - progress) * Math.min(1, dt * 6);
+
+      // car position on track (slight forward offset so we don't end exactly at start again)
+      const t = progress % 1;
+      const carPoint = trackCurve.getPointAt(t);
+      const tangent = trackCurve.getTangentAt(t).normalize();
+
+      car.position.set(carPoint.x, 0, carPoint.z);
+
+      // Orient car along tangent — car's forward is -Z in its local space
+      const lookTarget = new THREE.Vector3().copy(car.position).add(tangent);
+      car.lookAt(lookTarget);
+
+      // Subtle body roll based on curvature
+      const lookAhead = trackCurve.getPointAt((t + 0.01) % 1);
+      const tanAhead = trackCurve.getTangentAt((t + 0.01) % 1);
+      const cross = new THREE.Vector3().crossVectors(tangent, tanAhead).y;
+      car.rotation.z -= cross * 8;
+
+      // Spin wheels proportional to speed (scroll delta)
+      const speed = (targetProgress - progress);
+      const wheelSpin = 0.6 + Math.abs(speed) * 200;
+      car.userData.wheels.forEach(w => { w.rotation.x += wheelSpin * dt; });
+
+      // Chase camera behind car, above
+      const behind = tangent.clone().multiplyScalar(-10);
+      camPos.copy(car.position).add(behind);
+      camPos.y = 5.5;
+
+      const ahead = tangent.clone().multiplyScalar(6);
+      camLookAt.copy(car.position).add(ahead);
+      camLookAt.y = 1.2;
+
+      // smooth camera
+      camera.position.lerp(camPos, Math.min(1, dt * 4));
+      camera.lookAt(camLookAt);
+      camera.up.copy(up);
+
+      // HUD
+      const pct = Math.round(progress * 100);
+      progressBar.style.width = pct + '%';
+      progressText.textContent = pct + '%';
+
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+  </script>
+</body>
+</html>
