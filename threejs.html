@@ -27,15 +27,21 @@
       position: fixed;
       top: 0;
       left: 0;
-      width: 100vw;
-      height: 100vh;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      height: 100vh;       /* fallback */
+      height: 100dvh;      /* dynamic viewport — excludes mobile browser chrome */
       overflow: hidden;
       z-index: 1;
     }
 
     #scene {
       position: absolute;
-      inset: 0;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       display: block;
     }
 
@@ -504,15 +510,23 @@
     window.addEventListener('scroll', updateProgressFromScroll, { passive: true });
     updateProgressFromScroll();
 
-    // Resize
+    // Resize — use the stage's actual client rect so iOS Safari's
+    // dynamic toolbar doesn't push the canvas beyond the visible viewport.
+    const stage = document.getElementById('stickyStage');
     function resize() {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
+      const w = stage.clientWidth;
+      const h = stage.clientHeight;
       renderer.setSize(w, h, false);
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
     }
     window.addEventListener('resize', resize);
+    window.addEventListener('orientationchange', resize);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', resize);
+    }
     resize();
 
     // Animation
