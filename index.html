@@ -585,6 +585,11 @@
       <div class="caption">Scroll to orbit</div>
     </section>
 
+    <section class="image-seq" id="carSeq">
+      <canvas id="carCanvas" width="800" height="800"></canvas>
+      <div class="caption">3D car · scroll to spin</div>
+    </section>
+
     <footer>Built with anime.js + GSAP ScrollTrigger</footer>
 
     <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
@@ -865,6 +870,13 @@
         triggerId: "lensSeq",
         canvasId: "lensCanvas",
         dir: "lens-frames",
+        frames: 80,
+      });
+
+      createImageSequence({
+        triggerId: "carSeq",
+        canvasId: "carCanvas",
+        dir: "car-frames",
         frames: 80,
       });
 
