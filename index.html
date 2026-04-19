@@ -235,6 +235,38 @@
         text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
       }
 
+      /* --- Pinned image-sequence scrub --- */
+      .image-seq {
+        position: relative;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #0f1020;
+        margin: 0;
+        padding: 0;
+        max-width: none;
+        overflow: hidden;
+      }
+
+      .image-seq canvas {
+        width: min(80vmin, 600px);
+        height: min(80vmin, 600px);
+        display: block;
+      }
+
+      .image-seq .caption {
+        position: absolute;
+        bottom: 40px;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-size: 12px;
+        letter-spacing: 0.25em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
       footer {
         text-align: center;
         padding: 60px 24px 80px;
@@ -316,6 +348,11 @@
         <source src="scrub-video.mp4" type="video/mp4" />
       </video>
       <div class="caption">Scroll to scrub</div>
+    </section>
+
+    <section class="image-seq" id="imageSeq">
+      <canvas id="seqCanvas" width="800" height="800"></canvas>
+      <div class="caption">80-frame SVG sequence</div>
     </section>
 
     <footer>Built with anime.js + GSAP ScrollTrigger</footer>
@@ -552,6 +589,44 @@
         },
         { once: true }
       );
+
+      // --- Pinned image-sequence scrub ---
+      const seqCanvas = document.getElementById("seqCanvas");
+      const seqCtx = seqCanvas.getContext("2d");
+      const SEQ_FRAMES = 80;
+      const seqImages = [];
+
+      for (let i = 0; i < SEQ_FRAMES; i++) {
+        const img = new Image();
+        img.src = `frames/frame_${String(i).padStart(3, "0")}.svg`;
+        seqImages.push(img);
+      }
+
+      function drawSeq(idx) {
+        idx = Math.max(0, Math.min(SEQ_FRAMES - 1, idx));
+        const img = seqImages[idx];
+        if (!img.complete) return;
+        seqCtx.clearRect(0, 0, seqCanvas.width, seqCanvas.height);
+        seqCtx.drawImage(img, 0, 0, seqCanvas.width, seqCanvas.height);
+      }
+
+      seqImages[0].addEventListener(
+        "load",
+        () => drawSeq(0),
+        { once: true }
+      );
+
+      ScrollTrigger.create({
+        trigger: "#imageSeq",
+        start: "top top",
+        end: "+=200%",
+        pin: true,
+        scrub: 0.3,
+        onUpdate: (self) => {
+          const idx = Math.round(self.progress * (SEQ_FRAMES - 1));
+          drawSeq(idx);
+        },
+      });
     </script>
   </body>
 </html>
