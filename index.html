@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Animate POC</title>
+    <style>
+      :root {
+        --bg: #0f1020;
+        --fg: #f5f5fa;
+        --accent: #ff5a5f;
+        --accent-2: #5af0c8;
+        --accent-3: #ffd166;
+        --accent-4: #7aa2ff;
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        padding: 0;
+        min-height: 100%;
+        background:
+          radial-gradient(1200px 600px at 10% -10%, #1b1d3a 0%, transparent 60%),
+          radial-gradient(900px 500px at 110% 10%, #2a0f2e 0%, transparent 55%),
+          var(--bg);
+        color: var(--fg);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+      }
+
+      main {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 10vh 24px 6vh;
+      }
+
+      .eyebrow {
+        display: inline-block;
+        font-size: 12px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--accent-2);
+        opacity: 0;
+        transform: translateY(12px);
+      }
+
+      h1 {
+        font-size: clamp(40px, 7vw, 88px);
+        line-height: 1.05;
+        letter-spacing: -0.02em;
+        margin: 12px 0 20px;
+      }
+
+      h1 .word {
+        display: inline-block;
+        overflow: hidden;
+        vertical-align: bottom;
+      }
+
+      h1 .letter {
+        display: inline-block;
+        transform: translateY(110%);
+        will-change: transform;
+      }
+
+      p.lede {
+        font-size: clamp(16px, 1.6vw, 20px);
+        color: #c9cbe0;
+        max-width: 56ch;
+        opacity: 0;
+        transform: translateY(12px);
+      }
+
+      .shapes {
+        margin-top: 64px;
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+
+      .shape {
+        width: 96px;
+        height: 96px;
+        border-radius: 20px;
+        opacity: 0;
+        transform: translateY(40px) scale(0.8);
+        will-change: transform, opacity;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      }
+
+      .shape.circle { border-radius: 50%; }
+      .shape.c1 { background: var(--accent); }
+      .shape.c2 { background: var(--accent-2); }
+      .shape.c3 { background: var(--accent-3); }
+      .shape.c4 { background: var(--accent-4); }
+      .shape.c5 {
+        background: linear-gradient(135deg, var(--accent), var(--accent-3));
+      }
+
+      .hint {
+        margin-top: 48px;
+        font-size: 13px;
+        color: #8b8fae;
+        opacity: 0;
+      }
+
+      button.replay {
+        margin-left: 12px;
+        background: transparent;
+        color: var(--fg);
+        border: 1px solid #3a3d60;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font: inherit;
+        font-size: 12px;
+        cursor: pointer;
+        transition: border-color 0.2s, background 0.2s;
+      }
+
+      button.replay:hover {
+        border-color: var(--accent-2);
+        background: rgba(90, 240, 200, 0.08);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <span class="eyebrow">Animation POC</span>
+      <h1 id="headline" aria-label="Motion, made simple."></h1>
+      <p class="lede">
+        A tiny proof-of-concept page built with
+        <strong>anime.js</strong>. Words stagger in, shapes bounce up, and
+        everything can loop on demand.
+      </p>
+
+      <div class="shapes" id="shapes">
+        <div class="shape c1"></div>
+        <div class="shape c2 circle"></div>
+        <div class="shape c3"></div>
+        <div class="shape c4 circle"></div>
+        <div class="shape c5"></div>
+      </div>
+
+      <p class="hint">
+        Click a shape to poke it.
+        <button class="replay" id="replay">Replay intro</button>
+      </p>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
+    <script>
+      const headline = document.getElementById("headline");
+      const words = ["Motion,", "made", "simple."];
+      headline.innerHTML = words
+        .map(
+          (w) =>
+            `<span class="word">${[...w]
+              .map((ch) => `<span class="letter">${ch}</span>`)
+              .join("")}</span>`
+        )
+        .join(" ");
+
+      function playIntro() {
+        const tl = anime.timeline({
+          easing: "easeOutExpo",
+          duration: 800,
+        });
+
+        tl.add({
+          targets: ".eyebrow",
+          opacity: [0, 1],
+          translateY: [12, 0],
+          duration: 600,
+        })
+          .add(
+            {
+              targets: "#headline .letter",
+              translateY: ["110%", "0%"],
+              delay: anime.stagger(28),
+              duration: 900,
+            },
+            "-=300"
+          )
+          .add(
+            {
+              targets: "p.lede",
+              opacity: [0, 1],
+              translateY: [12, 0],
+              duration: 600,
+            },
+            "-=500"
+          )
+          .add(
+            {
+              targets: ".shape",
+              opacity: [0, 1],
+              translateY: [40, 0],
+              scale: [0.8, 1],
+              delay: anime.stagger(90),
+              duration: 900,
+              easing: "easeOutElastic(1, .7)",
+            },
+            "-=400"
+          )
+          .add(
+            {
+              targets: ".hint",
+              opacity: [0, 1],
+              duration: 500,
+            },
+            "-=600"
+          );
+      }
+
+      document.querySelectorAll(".shape").forEach((el) => {
+        el.addEventListener("click", () => {
+          anime.remove(el);
+          anime({
+            targets: el,
+            rotate: "+=360",
+            scale: [
+              { value: 1.2, duration: 180, easing: "easeOutQuad" },
+              { value: 1, duration: 500, easing: "easeOutElastic(1, .5)" },
+            ],
+            duration: 700,
+          });
+        });
+      });
+
+      document.getElementById("replay").addEventListener("click", () => {
+        anime.set(".eyebrow, p.lede, .hint", { opacity: 0, translateY: 12 });
+        anime.set("#headline .letter", { translateY: "110%" });
+        anime.set(".shape", { opacity: 0, translateY: 40, scale: 0.8, rotate: 0 });
+        playIntro();
+      });
+
+      playIntro();
+    </script>
+  </body>
+</html>
