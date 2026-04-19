@@ -464,11 +464,11 @@
       // One "lub-dub" beat, repeated. Durations are proportional segments
       // of the scrubbed range, not real seconds.
       function addBeat(tl) {
-        tl.to(".heart-wrap", { scale: 1.18, duration: 0.08, ease: "power2.out" })
-          .to(".heart-wrap", { scale: 1, duration: 0.12, ease: "power2.in" })
-          .to(".heart-wrap", { scale: 1.3, duration: 0.08, ease: "power2.out" })
-          .to(".heart-wrap", { scale: 1, duration: 0.15, ease: "power2.in" })
-          .to({}, { duration: 0.4 });
+        tl.to(".heart-wrap", { scale: 1.15, duration: 0.22, ease: "sine.out" })
+          .to(".heart-wrap", { scale: 1, duration: 0.3, ease: "sine.inOut" })
+          .to(".heart-wrap", { scale: 1.28, duration: 0.22, ease: "sine.out" })
+          .to(".heart-wrap", { scale: 1, duration: 0.36, ease: "sine.inOut" })
+          .to({}, { duration: 0.15 });
       }
 
       addBeat(heartTl);
