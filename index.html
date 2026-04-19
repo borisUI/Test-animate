@@ -312,8 +312,17 @@
         playsinline
         preload="auto"
         aria-hidden="true"
-        src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
-      ></video>
+        crossorigin="anonymous"
+      >
+        <source
+          src="https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4"
+          type="video/mp4"
+        />
+        <source
+          src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
+          type="video/mp4"
+        />
+      </video>
       <div class="caption">Scroll to scrub</div>
     </section>
 
@@ -519,31 +528,30 @@
       addBeat(heartTl);
 
       // --- Pinned scroll-scrubbed video ---
+      // The pin is set up immediately so the section always pins, even if
+      // the video hasn't loaded yet. Scrubbing kicks in once duration is
+      // available; ScrollTrigger.refresh() re-measures after metadata loads.
       const scrubVideo = document.getElementById("scrubVideo");
 
-      function setupVideoScrub() {
-        ScrollTrigger.create({
-          trigger: "#videoScrub",
-          start: "top top",
-          end: "+=200%",
-          pin: true,
-          scrub: 0.3,
-          onUpdate: (self) => {
-            if (!isFinite(scrubVideo.duration)) return;
-            scrubVideo.currentTime = self.progress * scrubVideo.duration;
-          },
-        });
-      }
+      ScrollTrigger.create({
+        trigger: "#videoScrub",
+        start: "top top",
+        end: "+=200%",
+        pin: true,
+        scrub: 0.3,
+        onUpdate: (self) => {
+          const d = scrubVideo.duration;
+          if (!isFinite(d) || d <= 0) return;
+          scrubVideo.currentTime = self.progress * d;
+        },
+      });
 
-      if (scrubVideo.readyState >= 1) {
-        setupVideoScrub();
-      } else {
-        scrubVideo.addEventListener("loadedmetadata", setupVideoScrub, {
-          once: true,
-        });
-      }
+      scrubVideo.addEventListener("loadedmetadata", () => {
+        ScrollTrigger.refresh();
+      });
 
-      // Nudge iOS Safari into allowing smooth seeking.
+      // Force load attempt and nudge iOS Safari into allowing smooth seeking.
+      scrubVideo.load();
       scrubVideo.addEventListener(
         "loadeddata",
         () => {
