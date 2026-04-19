@@ -355,6 +355,11 @@
       <div class="caption">80-frame SVG sequence</div>
     </section>
 
+    <section class="image-seq" id="lensSeq">
+      <canvas id="lensCanvas" width="800" height="800"></canvas>
+      <div class="caption">Camera lens · scroll to focus</div>
+    </section>
+
     <footer>Built with anime.js + GSAP ScrollTrigger</footer>
 
     <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
@@ -590,42 +595,52 @@
         { once: true }
       );
 
-      // --- Pinned image-sequence scrub ---
-      const seqCanvas = document.getElementById("seqCanvas");
-      const seqCtx = seqCanvas.getContext("2d");
-      const SEQ_FRAMES = 80;
-      const seqImages = [];
+      // --- Pinned image-sequence scrub helper ---
+      function createImageSequence({ triggerId, canvasId, dir, frames }) {
+        const canvas = document.getElementById(canvasId);
+        const ctx = canvas.getContext("2d");
+        const images = [];
 
-      for (let i = 0; i < SEQ_FRAMES; i++) {
-        const img = new Image();
-        img.src = `frames/frame_${String(i).padStart(3, "0")}.svg`;
-        seqImages.push(img);
+        for (let i = 0; i < frames; i++) {
+          const img = new Image();
+          img.src = `${dir}/frame_${String(i).padStart(3, "0")}.svg`;
+          images.push(img);
+        }
+
+        function draw(idx) {
+          idx = Math.max(0, Math.min(frames - 1, idx));
+          const img = images[idx];
+          if (!img.complete) return;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        }
+
+        images[0].addEventListener("load", () => draw(0), { once: true });
+
+        ScrollTrigger.create({
+          trigger: `#${triggerId}`,
+          start: "top top",
+          end: "+=200%",
+          pin: true,
+          scrub: 0.3,
+          onUpdate: (self) => {
+            draw(Math.round(self.progress * (frames - 1)));
+          },
+        });
       }
 
-      function drawSeq(idx) {
-        idx = Math.max(0, Math.min(SEQ_FRAMES - 1, idx));
-        const img = seqImages[idx];
-        if (!img.complete) return;
-        seqCtx.clearRect(0, 0, seqCanvas.width, seqCanvas.height);
-        seqCtx.drawImage(img, 0, 0, seqCanvas.width, seqCanvas.height);
-      }
+      createImageSequence({
+        triggerId: "imageSeq",
+        canvasId: "seqCanvas",
+        dir: "frames",
+        frames: 80,
+      });
 
-      seqImages[0].addEventListener(
-        "load",
-        () => drawSeq(0),
-        { once: true }
-      );
-
-      ScrollTrigger.create({
-        trigger: "#imageSeq",
-        start: "top top",
-        end: "+=200%",
-        pin: true,
-        scrub: 0.3,
-        onUpdate: (self) => {
-          const idx = Math.round(self.progress * (SEQ_FRAMES - 1));
-          drawSeq(idx);
-        },
+      createImageSequence({
+        triggerId: "lensSeq",
+        canvasId: "lensCanvas",
+        dir: "lens-frames",
+        frames: 80,
       });
     </script>
   </body>
