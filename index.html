@@ -168,6 +168,42 @@
         margin-right: 0.25em;
       }
 
+      /* --- Pinned heart section --- */
+      .heart {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 0 24px;
+      }
+
+      .heart h2 {
+        margin: 0 0 8px;
+      }
+
+      .heart .sub {
+        margin: 0 0 48px;
+        color: var(--muted);
+        font-size: 14px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+      }
+
+      .heart-wrap {
+        display: inline-block;
+        transform-origin: 50% 55%;
+        filter: drop-shadow(0 18px 40px rgba(196, 30, 58, 0.4));
+        will-change: transform;
+      }
+
+      .heart-svg {
+        width: min(40vmin, 320px);
+        height: auto;
+        display: block;
+      }
+
       footer {
         text-align: center;
         padding: 60px 24px 80px;
@@ -219,9 +255,30 @@
       </p>
     </section>
 
-    <footer>Built with anime.js · scroll-linked POC</footer>
+    <section class="heart" id="heart">
+      <h2>Beat.</h2>
+      <p class="sub">Scroll to feel the pulse</p>
+      <div class="heart-wrap">
+        <svg class="heart-svg" viewBox="0 0 100 100" aria-hidden="true">
+          <defs>
+            <linearGradient id="heartGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#ff7a7f" />
+              <stop offset="1" stop-color="#c41e3a" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M50,82 C50,82 14,56 14,30 C14,16 26,8 38,14 C44,17 48,22 50,28 C52,22 56,17 62,14 C74,8 86,16 86,30 C86,56 50,82 50,82 Z"
+            fill="url(#heartGrad)"
+          />
+        </svg>
+      </div>
+    </section>
+
+    <footer>Built with anime.js + GSAP ScrollTrigger</footer>
 
     <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
     <script>
       // --- Split headline into word/letter spans for the hero intro ---
       const headline = document.getElementById("headline");
@@ -390,6 +447,33 @@
       window.addEventListener("scroll", onScroll, { passive: true });
       window.addEventListener("resize", onScroll);
       update();
+
+      // --- Pinned beating heart (GSAP + ScrollTrigger) ---
+      gsap.registerPlugin(ScrollTrigger);
+
+      const heartTl = gsap.timeline({
+        scrollTrigger: {
+          trigger: "#heart",
+          start: "top top",
+          end: "+=150%",
+          pin: true,
+          scrub: 0.4,
+        },
+      });
+
+      // One "lub-dub" beat, repeated. Durations are proportional segments
+      // of the scrubbed range, not real seconds.
+      function addBeat(tl) {
+        tl.to(".heart-wrap", { scale: 1.18, duration: 0.08, ease: "power2.out" })
+          .to(".heart-wrap", { scale: 1, duration: 0.12, ease: "power2.in" })
+          .to(".heart-wrap", { scale: 1.3, duration: 0.08, ease: "power2.out" })
+          .to(".heart-wrap", { scale: 1, duration: 0.15, ease: "power2.in" })
+          .to({}, { duration: 0.4 });
+      }
+
+      addBeat(heartTl);
+      addBeat(heartTl);
+      addBeat(heartTl);
     </script>
   </body>
 </html>
