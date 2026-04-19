@@ -267,6 +267,198 @@
         color: var(--muted);
       }
 
+      /* --- Pinned 3D car scroll --- */
+      .car-scroll {
+        position: relative;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0;
+        padding: 0;
+        max-width: none;
+        overflow: hidden;
+        background:
+          radial-gradient(60% 40% at 50% 60%, #1a1c3a 0%, transparent 70%),
+          #0b0c1c;
+        perspective: 1200px;
+      }
+
+      .car-stage {
+        width: min(80vmin, 600px);
+        height: min(60vmin, 420px);
+        position: relative;
+        transform-style: preserve-3d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .car {
+        position: relative;
+        width: 320px;
+        height: 110px;
+        transform-style: preserve-3d;
+        transform: rotateX(-14deg) rotateY(-30deg);
+        will-change: transform;
+      }
+
+      .car .face {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        backface-visibility: visible;
+        box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.25);
+      }
+
+      /* Car body 320 (length) x 110 (height) x 140 (width) */
+      .body-side {
+        width: 320px;
+        height: 110px;
+        margin: -55px 0 0 -160px;
+        background: linear-gradient(180deg, #ff8f94 0%, #ff5a5f 55%, #c41e3a 100%);
+        border-radius: 22px 26px 14px 14px / 30px 32px 14px 14px;
+      }
+      .body-front-side { transform: translateZ(70px); }
+      .body-back-side { transform: rotateY(180deg) translateZ(70px); }
+
+      .body-end {
+        width: 140px;
+        height: 110px;
+        margin: -55px 0 0 -70px;
+        background: linear-gradient(180deg, #ff7a7f, #a8162e);
+        border-radius: 18px 18px 12px 12px;
+      }
+      .body-front { transform: rotateY(90deg) translateZ(160px); }
+      .body-back { transform: rotateY(-90deg) translateZ(160px); }
+
+      .body-top {
+        width: 320px;
+        height: 140px;
+        margin: -70px 0 0 -160px;
+        background: linear-gradient(90deg, #c41e3a, #ff7a7f 50%, #c41e3a);
+        border-radius: 26px;
+        transform: rotateX(90deg) translateZ(55px);
+      }
+      .body-bottom {
+        width: 320px;
+        height: 140px;
+        margin: -70px 0 0 -160px;
+        background: #2a0a13;
+        transform: rotateX(-90deg) translateZ(55px);
+      }
+
+      /* Cabin sits on top of body: 180 x 70 x 130 */
+      .cabin {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 180px;
+        height: 70px;
+        margin: -90px 0 0 -90px; /* -55 (body half) - 35 (cabin half) */
+        transform-style: preserve-3d;
+      }
+
+      .cabin .face {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+      }
+
+      .cabin-side {
+        width: 180px;
+        height: 70px;
+        margin: -35px 0 0 -90px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.05) 40%, transparent 60%),
+          linear-gradient(180deg, #20223a 0%, #0c0e1e 100%);
+        border-radius: 20px 24px 6px 6px;
+        border: 2px solid #c41e3a;
+      }
+      .cabin-front-side { transform: translateZ(65px); }
+      .cabin-back-side { transform: rotateY(180deg) translateZ(65px); }
+
+      .cabin-end {
+        width: 130px;
+        height: 70px;
+        margin: -35px 0 0 -65px;
+        background: linear-gradient(180deg, #2d3050, #0a0c1a);
+        border-radius: 14px 14px 4px 4px;
+        border: 2px solid #c41e3a;
+      }
+      .cabin-front { transform: rotateY(90deg) translateZ(90px); }
+      .cabin-back { transform: rotateY(-90deg) translateZ(90px); }
+
+      .cabin-top {
+        width: 180px;
+        height: 130px;
+        margin: -65px 0 0 -90px;
+        background: linear-gradient(90deg, #0a0c1a, #1a1d38 50%, #0a0c1a);
+        border-radius: 22px;
+        transform: rotateX(90deg) translateZ(35px);
+      }
+
+      /* Wheels — discs facing outward on each side */
+      .wheel {
+        position: absolute;
+        width: 60px;
+        height: 60px;
+        top: 50%;
+        left: 50%;
+        margin: -30px 0 0 -30px;
+        border-radius: 50%;
+        background:
+          radial-gradient(circle at 50% 50%, #555 0 6px, #222 7px 22px, #111 23px 30px);
+        border: 2px solid #000;
+        box-shadow: 0 0 0 2px #333 inset;
+        transform-style: preserve-3d;
+      }
+
+      .wheel::before {
+        /* hub cap */
+        content: "";
+        position: absolute;
+        inset: 22px;
+        background: radial-gradient(circle, #888 0%, #444 60%, #222 100%);
+        border-radius: 50%;
+      }
+
+      .wheel-fl { transform: translate3d(95px, 30px, 72px) rotateY(0deg); }
+      .wheel-bl { transform: translate3d(-95px, 30px, 72px) rotateY(0deg); }
+      .wheel-fr { transform: translate3d(95px, 30px, -72px) rotateY(180deg); }
+      .wheel-br { transform: translate3d(-95px, 30px, -72px) rotateY(180deg); }
+
+      /* Headlights & taillights on the end faces */
+      .headlight, .taillight {
+        position: absolute;
+        width: 28px;
+        height: 18px;
+        border-radius: 6px;
+        top: 30px;
+      }
+      .headlight {
+        background: radial-gradient(circle, #fff6c2, #ffd166);
+        box-shadow: 0 0 20px #ffd166;
+      }
+      .taillight {
+        background: radial-gradient(circle, #ffb3b5, #c41e3a);
+        box-shadow: 0 0 14px #ff5a5f;
+      }
+      .hl-left { left: 12px; }
+      .hl-right { right: 12px; }
+
+      .car-scroll .caption {
+        position: absolute;
+        bottom: 40px;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-size: 12px;
+        letter-spacing: 0.25em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
       footer {
         text-align: center;
         padding: 60px 24px 80px;
@@ -358,6 +550,39 @@
     <section class="image-seq" id="lensSeq">
       <canvas id="lensCanvas" width="800" height="800"></canvas>
       <div class="caption">Camera lens · scroll to focus</div>
+    </section>
+
+    <section class="car-scroll" id="carScroll">
+      <div class="car-stage">
+        <div class="car" id="car3d">
+          <div class="face body-side body-front-side"></div>
+          <div class="face body-side body-back-side"></div>
+          <div class="face body-end body-front">
+            <div class="headlight hl-left"></div>
+            <div class="headlight hl-right"></div>
+          </div>
+          <div class="face body-end body-back">
+            <div class="taillight hl-left"></div>
+            <div class="taillight hl-right"></div>
+          </div>
+          <div class="face body-top"></div>
+          <div class="face body-bottom"></div>
+
+          <div class="cabin">
+            <div class="face cabin-side cabin-front-side"></div>
+            <div class="face cabin-side cabin-back-side"></div>
+            <div class="face cabin-end cabin-front"></div>
+            <div class="face cabin-end cabin-back"></div>
+            <div class="face cabin-top"></div>
+          </div>
+
+          <div class="wheel wheel-fl"></div>
+          <div class="wheel wheel-fr"></div>
+          <div class="wheel wheel-bl"></div>
+          <div class="wheel wheel-br"></div>
+        </div>
+      </div>
+      <div class="caption">Scroll to orbit</div>
     </section>
 
     <footer>Built with anime.js + GSAP ScrollTrigger</footer>
@@ -642,6 +867,27 @@
         dir: "lens-frames",
         frames: 80,
       });
+
+      // --- Pinned 3D car orbit ---
+      gsap.timeline({
+        scrollTrigger: {
+          trigger: "#carScroll",
+          start: "top top",
+          end: "+=200%",
+          pin: true,
+          scrub: 0.4,
+        },
+      })
+        .fromTo(
+          "#car3d",
+          { rotateX: -14, rotateY: -30 },
+          { rotateX: -18, rotateY: 390, ease: "none" }
+        )
+        .to(
+          "#car3d",
+          { y: -18, duration: 0.5, yoyo: true, repeat: 1, ease: "sine.inOut" },
+          0
+        );
     </script>
   </body>
 </html>
